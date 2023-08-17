@@ -52,7 +52,7 @@ namespace DurableTask.Core.History
         /// </summary>
         internal HistoryEvent()
         {
-            Timestamp = DateTime.UtcNow;
+            Timestamp = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Utc);
         }
 
         /// <summary>

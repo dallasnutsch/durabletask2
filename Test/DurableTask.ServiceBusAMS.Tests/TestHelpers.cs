@@ -87,7 +87,7 @@ namespace DurableTask.ServiceBus.Tests
         }
 
         // ReSharper disable once UnusedParameter.Local
-        static IOrchestrationService CreateOrchestrationServiceWorker(
+        public static IOrchestrationService CreateOrchestrationServiceWorker(
             ServiceBusOrchestrationServiceSettings settings,
             TimeSpan jumpStartAttemptInterval)
         {

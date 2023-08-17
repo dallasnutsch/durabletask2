@@ -337,8 +337,10 @@ namespace DurableTask.ServiceBus.Tests
                 Input = "INPUT_" + instanceId + "_" + genId,
                 Output = null
             };
-            tableClient.WriteEntitiesAsync(new AzureTableOrchestrationStateEntity(runtimeState)).Wait();
-               
+
+            entities.Add(new AzureTableOrchestrationStateEntity(runtimeState));
+            azureTableClient.WriteEntitiesAsync(entities).Wait();
+
             return entities;
         }
 

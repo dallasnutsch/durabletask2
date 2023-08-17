@@ -607,7 +607,7 @@ namespace DurableTask.ServiceBus
             return new TaskOrchestrationWorkItem
             {
                 InstanceId = receiver.SessionId,
-                LockedUntilUtc = receiver.SessionLockedUntil.DateTime,
+                LockedUntilUtc = receiver.SessionLockedUntil.UtcDateTime,
                 NewMessages = newTaskMessages.ToList(),
                 OrchestrationRuntimeState = runtimeState
             };
@@ -625,7 +625,7 @@ namespace DurableTask.ServiceBus
                 OrchestrationStatus = OrchestrationStatus.Pending,
                 Input = executionStartedEvent.Input,
                 Tags = executionStartedEvent.Tags,
-                CreatedTime = executionStartedEvent.Timestamp,
+                CreatedTime = DateTime.SpecifyKind(executionStartedEvent.Timestamp, DateTimeKind.Utc),
                 LastUpdatedTime = DateTime.UtcNow,
                 CompletedTime = DateTimeUtils.MinDateTime,
                 ParentInstance = executionStartedEvent.ParentInstance,
@@ -701,7 +701,7 @@ namespace DurableTask.ServiceBus
                 }
             }
             this.ServiceStats.OrchestrationDispatcherStats.SessionsRenewed.Increment();
-            workItem.LockedUntilUtc = sessionState.SessionReceiver.SessionLockedUntil.DateTime;
+            workItem.LockedUntilUtc = sessionState.SessionReceiver.SessionLockedUntil.UtcDateTime;
         }
 
         /// <summary>
@@ -909,18 +909,25 @@ namespace DurableTask.ServiceBus
             }
 
             TraceHelper.TraceSession(TraceEventType.Error, "ServiceBusOrchestrationService-AbandonTaskOrchestrationWorkItem", workItem.InstanceId, "Abandoning {0} messages due to work item abort", sessionState.Messages.Count());
-            foreach (var message in sessionState.Messages)
-            {
-                await sessionState.SessionReceiver.AbandonMessageAsync(message);
-            }
 
             try
             {
-                await sessionState.SessionReceiver.CloseAsync();
+                foreach (var message in sessionState.Messages)
+                {
+                    await sessionState.SessionReceiver.AbandonMessageAsync(message);
+                }
             }
-            catch (Exception ex) when (!Utils.IsFatal(ex))
+            finally
             {
-                TraceHelper.TraceExceptionSession(TraceEventType.Warning, "ServiceBusOrchestrationService-AbandonTaskOrchestrationWorkItemError", workItem.InstanceId, ex, "Error while aborting session");
+                // call close async to release the session
+                try
+                {
+                    await sessionState.SessionReceiver.CloseAsync();
+                }
+                catch (Exception ex)
+                {
+                    TraceHelper.TraceExceptionSession(TraceEventType.Error, "ServiceBusOrchestrationService-AbandonTaskOrchestrationWorkItemError", workItem.InstanceId, ex, "Could not close session receiver");
+                }
             }
         }
 
@@ -969,7 +976,7 @@ namespace DurableTask.ServiceBus
             return new TaskActivityWorkItem
             {
                 Id = receivedMessage.MessageId,
-                LockedUntilUtc = receivedMessage.LockedUntil.DateTime,
+                LockedUntilUtc = receivedMessage.LockedUntil.UtcDateTime,
                 TaskMessage = taskMessage
             };
         }
@@ -1007,7 +1014,7 @@ namespace DurableTask.ServiceBus
             if (message != null)
             {   
                 await this.workerReceiver.RenewMessageLockAsync(message);
-                workItem.LockedUntilUtc = message.LockedUntil.DateTime;
+                workItem.LockedUntilUtc = message.LockedUntil.UtcDateTime;
                 this.ServiceStats.ActivityDispatcherStats.SessionsRenewed.Increment();
             }
 
@@ -1511,12 +1518,24 @@ namespace DurableTask.ServiceBus
             }
 
             // Cleanup our session
-
-            foreach (var message in sessionState.Messages)
+            try
             {
-                await sessionState.SessionReceiver.CompleteMessageAsync(message);
+                foreach (var message in sessionState.Messages)
+                {
+                    await sessionState.SessionReceiver.CompleteMessageAsync(message);
+                }
             }
-            await sessionState.SessionReceiver.CloseAsync();
+            finally
+            {
+                try
+                {
+                    await sessionState.SessionReceiver.CloseAsync();
+                } 
+                catch (Exception ex)
+                {
+                    TraceHelper.TraceException( TraceEventType.Error, "ServiceBusOrchestrationService-ProcessTrackingWorkItemAsync", ex, $"could not close session receiver for tracking work item");
+                }
+            }
         }
 
         void TraceEntities<T>(

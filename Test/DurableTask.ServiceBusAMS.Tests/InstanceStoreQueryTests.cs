@@ -122,6 +122,8 @@ namespace DurableTask.ServiceBus.Tests
         [TestMethod]
         public async Task SegmentedQueryUnequalCountsTest()
         {
+            await this.queryClient.InitializeStoreAsync(true);
+
             await this.taskHub.AddTaskOrchestrations(typeof (InstanceStoreTestOrchestration),
                 typeof (InstanceStoreTestOrchestration2))
                 .AddTaskActivities(new Activity1())
@@ -158,10 +160,15 @@ namespace DurableTask.ServiceBus.Tests
         [TestMethod]
         public async Task PurgeOrchestrationHistoryTest()
         {
+            await this.queryClient.InitializeStoreAsync(true);
+
+
+
             await this.taskHub.AddTaskOrchestrations(typeof (InstanceStoreTestOrchestration),
                 typeof (InstanceStoreTestOrchestration2))
                 .AddTaskActivities(new Activity1())
                 .StartAsync();
+
 
             for (var i = 0; i < 25; i++)
             {
@@ -222,6 +229,8 @@ namespace DurableTask.ServiceBus.Tests
         [TestMethod]
         public async Task PurgeManyOrchestrationHistoryTest()
         {
+            await this.queryClient.InitializeStoreAsync(true);
+
             await this.taskHub.AddTaskOrchestrations(typeof (InstanceStoreTestOrchestration),
                 typeof (InstanceStoreTestOrchestration2))
                 .AddTaskActivities(new Activity1())
