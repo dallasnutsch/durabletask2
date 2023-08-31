@@ -10,7 +10,7 @@
   <PropertyGroup>
     <MajorVersion>2</MajorVersion>
     <MinorVersion>7</MinorVersion>
-    <PatchVersion>3</PatchVersion>
+    <PatchVersion>4</PatchVersion>
 
     <VersionPrefix>$(MajorVersion).$(MinorVersion).$(PatchVersion)</VersionPrefix>
     <FileVersion>$(VersionPrefix).1</FileVersion>
@@ -45,6 +45,7 @@
     <PackageReference Include="Azure.Storage.Common" Version="12.15.0" />
     <PackageReference Include="System.Linq.Async" Version="4.0.0" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <Reference Include="System.Transactions" />
   </ItemGroup>
 
   <ItemGroup>
