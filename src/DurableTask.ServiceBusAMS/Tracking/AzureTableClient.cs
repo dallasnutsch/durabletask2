@@ -29,6 +29,7 @@ namespace DurableTask.ServiceBus.Tracking
     using Azure;
     using Azure.Data.Tables;
     using Azure.Core;
+    using static Microsoft.Azure.Amqp.Serialization.SerializableType;
 
     internal class AzureTableClient
     {
@@ -139,14 +140,27 @@ namespace DurableTask.ServiceBus.Tracking
             return await ReadAllEntitiesAsync<AzureTableOrchestrationStateEntity>(query, this.historyTable, - JumpStartTableScanIntervalInDays);
         }
 
-        public IAsyncEnumerable<Page<AzureTableOrchestrationStateEntity>> QueryOrchestrationStatesSegmented(
+        public async Task<List<AzureTableOrchestrationStateEntity>> QueryOrchestrationStatesSegmented(
             OrchestrationStateQuery stateQuery, string? continuationToken, int count)
         {
             string query = CreateQueryInternal(stateQuery, false);
-            var pageable = this.historyTable.QueryAsync<AzureTableOrchestrationStateEntity>(query);
+            var pageable = this.historyTable.QueryAsync<TableEntity>(query);
 
-            //TODO: count
-            return pageable.AsPages(continuationToken);
+            var pages = pageable.AsPages(continuationToken);
+
+            var results = new List<AzureTableOrchestrationStateEntity>();
+
+            await foreach (Page<TableEntity> page in pages)
+            {
+                foreach (var entity in page.Values)
+                {
+                    AzureTableCompositeTableEntity composite = (AzureTableCompositeTableEntity)Activator.CreateInstance(typeof(AzureTableOrchestrationStateEntity));
+                    composite.ReadEntity(entity);
+                    results.Add((AzureTableOrchestrationStateEntity)composite);
+                }
+            }
+
+            return results;
         }
 
         public async Task<IEnumerable<AzureTableOrchestrationStateEntity>> QueryJumpStartOrchestrationsAsync(OrchestrationStateQuery stateQuery)

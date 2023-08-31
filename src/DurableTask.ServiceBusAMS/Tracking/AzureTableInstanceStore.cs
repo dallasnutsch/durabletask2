@@ -288,24 +288,13 @@ namespace DurableTask.ServiceBus.Tracking
         public async Task<OrchestrationStateQuerySegment> QueryOrchestrationStatesSegmentedAsync(
             OrchestrationStateQuery stateQuery, string continuationToken, int count)
         {
-            IAsyncEnumerable<Page<AzureTableOrchestrationStateEntity>> pages =
-                this.tableClient.QueryOrchestrationStatesSegmented(stateQuery, continuationToken, count);
-
-            Page<AzureTableOrchestrationStateEntity> lastPage = null;
-            var results = new List<AzureTableOrchestrationStateEntity>();
-
-            await foreach (Page<AzureTableOrchestrationStateEntity> page in pages) {
-
-                results.AddRange(page.Values);
-                lastPage = page;
-            }
+            List<AzureTableOrchestrationStateEntity> results =
+                await this.tableClient.QueryOrchestrationStatesSegmented(stateQuery, continuationToken, count);
 
             return new OrchestrationStateQuerySegment
             {
                 Results = results.Select(s => s.State),
-                ContinuationToken = lastPage == null
-                    ? null
-                    : lastPage.ContinuationToken,
+                ContinuationToken = null
             };
         }
 
@@ -320,37 +309,26 @@ namespace DurableTask.ServiceBus.Tracking
             string continuationToken = null;
 
             var purgeCount = 0;
-            do
-            {
-                IAsyncEnumerable<Page<AzureTableOrchestrationStateEntity>> pages =
-                    this.tableClient.QueryOrchestrationStatesSegmented(
-                        new OrchestrationStateQuery()
-                            .AddTimeRangeFilter(DateTimeUtils.MinDateTime, thresholdDateTimeUtc, timeRangeFilterType),
-                        continuationToken, 100);
 
-                Page<AzureTableOrchestrationStateEntity> lastPage = null;
-                
+            List <AzureTableOrchestrationStateEntity> results =
+                await this.tableClient.QueryOrchestrationStatesSegmented(
+                    new OrchestrationStateQuery()
+                        .AddTimeRangeFilter(DateTimeUtils.MinDateTime, thresholdDateTimeUtc, timeRangeFilterType),
+            continuationToken, 100);
 
-                await foreach (var page in pages)
-                {
-                    await PurgeOrchestrationHistorySegmentAsync(page).ConfigureAwait(false);
-                    purgeCount += page.Values.Count;
-                    lastPage = page;
-                }
-
-                continuationToken = lastPage?.ContinuationToken;
-            } while (continuationToken != null);
+            await PurgeOrchestrationHistorySegmentAsync(results).ConfigureAwait(false);
+            purgeCount += results.Count;
 
             return purgeCount;
         }
 
         async Task PurgeOrchestrationHistorySegmentAsync(
-            Page<AzureTableOrchestrationStateEntity> orchestrationStateEntitySegment)
+            List<AzureTableOrchestrationStateEntity> orchestrationStateEntitySegment)
         {
-            var stateEntitiesToDelete = new List<AzureTableOrchestrationStateEntity>(orchestrationStateEntitySegment.Values);
+            var stateEntitiesToDelete = new List<AzureTableOrchestrationStateEntity>(orchestrationStateEntitySegment);
 
             var historyEntitiesToDelete = new ConcurrentBag<IEnumerable<AzureTableOrchestrationHistoryEventEntity>>();
-            await Task.WhenAll(orchestrationStateEntitySegment.Values.Select(
+            await Task.WhenAll(orchestrationStateEntitySegment.Select(
                 entity => Task.Run(async () =>
                 {
                     IEnumerable<AzureTableOrchestrationHistoryEventEntity> historyEntities =

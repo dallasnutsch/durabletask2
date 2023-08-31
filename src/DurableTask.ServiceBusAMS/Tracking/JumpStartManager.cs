@@ -87,7 +87,13 @@ namespace DurableTask.ServiceBus.Tracking
                         "JumpStartManager-Fetch-End",
                         $"JumpStartManager: Fetched state entities count: {entities.Count}");
                     var taskList = new List<Task>();
-                    entities.ForEach(e => taskList.Add(JumpStartOrchestrationAsync(e)));
+                    entities.ForEach(e => {
+                        if (e.JumpStartTime.Kind == DateTimeKind.Unspecified)
+                        {
+                            e.JumpStartTime = DateTime.SpecifyKind(e.JumpStartTime, DateTimeKind.Utc);
+                        }
+                        taskList.Add(JumpStartOrchestrationAsync(e));
+                        });
                     await Task.WhenAll(taskList);
                 }
                 catch (TimeoutException)

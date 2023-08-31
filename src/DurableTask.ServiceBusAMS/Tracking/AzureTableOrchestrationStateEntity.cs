@@ -129,31 +129,31 @@ namespace DurableTask.ServiceBus.Tracking
                 Status = GetValue("Status", properties, property => property as String),
                 Tags = GetTagsFromString(properties),
                 CreatedTime =
-                    GetValue("CreatedTime", properties, property => property as DateTimeOffset?)
+                    DateTime.SpecifyKind(GetValue("CreatedTime", properties, property => property as DateTimeOffset?)
                         .GetValueOrDefault()
-                        .DateTime,
+                        .DateTime, DateTimeKind.Utc),
                 CompletedTime =
-                    GetValue("CompletedTime", properties, property => property as DateTimeOffset?)
+                    DateTime.SpecifyKind(GetValue("CompletedTime", properties, property => property as DateTimeOffset?)
                         .GetValueOrDefault()
-                        .DateTime,
+                        .DateTime, DateTimeKind.Utc),
                 LastUpdatedTime =
-                    GetValue("LastUpdatedTime", properties, property => property as DateTimeOffset?)
+                    DateTime.SpecifyKind(GetValue("LastUpdatedTime", properties, property => property as DateTimeOffset?)
                         .GetValueOrDefault()
-                        .DateTime,
+                        .DateTime, DateTimeKind.Utc),
                 Size = GetValue("Size", properties, property => property as Int64?).GetValueOrDefault(),
                 CompressedSize =
                     GetValue("CompressedSize", properties, property => property as Int64?).GetValueOrDefault(),
                 Input = GetValue("Input", properties, property => property as String),
                 Output = GetValue("Output", properties, property => property as String),
-                ScheduledStartTime = GetValue("ScheduledStartTime", properties, property => property as DateTimeOffset?)
+                ScheduledStartTime = DateTime.SpecifyKind(GetValue("ScheduledStartTime", properties, property => property as DateTimeOffset?)
                     .GetValueOrDefault()
-                    .DateTime,
+                    .DateTime, DateTimeKind.Utc),
             };
 
             TaskTimeStamp =
-                GetValue("TaskTimeStamp", properties, property => property as DateTimeOffset?)
+                DateTime.SpecifyKind(GetValue("TaskTimeStamp", properties, property => property as DateTimeOffset?)
                     .GetValueOrDefault()
-                    .DateTime;
+                    .DateTime, DateTimeKind.Utc);
 
             string orchestrationStatusStr = GetValue("OrchestrationStatus", properties, property => property as String);
             if (!Enum.TryParse(orchestrationStatusStr, out State.OrchestrationStatus))
